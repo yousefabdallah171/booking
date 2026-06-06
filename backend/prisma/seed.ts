@@ -8,6 +8,7 @@ async function main() {
   const adminPassword = process.env.ADMIN_INITIAL_PASSWORD ?? "changeme123";
   const clientEmail = process.env.CLIENT_TEST_EMAIL ?? "testclient@example.com";
   const clientPassword = process.env.CLIENT_TEST_PASSWORD ?? "Client@1234";
+  const resetSeedPasswords = process.env.RESET_SEED_PASSWORDS === "true";
 
   const [adminPasswordHash, clientPasswordHash] = await Promise.all([
     bcrypt.hash(adminPassword, 12),
@@ -19,7 +20,7 @@ async function main() {
     update: {
       name: "Youssef",
       role: "ADMIN",
-      password: adminPasswordHash,
+      ...(resetSeedPasswords ? { password: adminPasswordHash } : {}),
     },
     create: {
       email: adminEmail,
@@ -36,7 +37,7 @@ async function main() {
     update: {
       name: "Test Client",
       role: "CLIENT",
-      password: clientPasswordHash,
+      ...(resetSeedPasswords ? { password: clientPasswordHash } : {}),
     },
     create: {
       email: clientEmail,
