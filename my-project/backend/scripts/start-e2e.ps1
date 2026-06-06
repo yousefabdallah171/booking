@@ -1,0 +1,16 @@
+$env:PORT = "4100"
+$env:FRONTEND_URL = "http://127.0.0.1:3100"
+$env:DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/booking"
+$env:DATABASE_URL_TEST = "postgresql://postgres:postgres@localhost:5432/booking_test"
+$env:AUTH_SECRET = "dev-secret-change-in-production-min-32-chars-ok"
+$env:PAYMOB_API_KEY = "dev-placeholder"
+$env:PAYMOB_INTEGRATION_ID = "dev-placeholder"
+$env:PAYMOB_IFRAME_ID = "dev-placeholder"
+$env:PAYMOB_HMAC_SECRET = "dev-placeholder"
+$env:RESEND_API_KEY = "dev-placeholder"
+$env:RESEND_FROM_EMAIL = "noreply@example.com"
+$env:CRON_SECRET = "dev-cron-secret-change-in-production-32-chars"
+$env:ADMIN_EMAIL = "youseabdallah866@gmail.com"
+$env:ADMIN_INITIAL_PASSWORD = "Admin@1234"
+
+pnpm.cmd dev

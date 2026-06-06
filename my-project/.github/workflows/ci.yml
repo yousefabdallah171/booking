@@ -1,0 +1,135 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main, '001-consultation-booking']
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  backend-type-check:
+    name: Backend Type Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: backend/pnpm-lock.yaml
+      - run: pnpm install
+      - run: pnpm prisma generate
+      - run: pnpm type-check
+
+  frontend-type-check:
+    name: Frontend Type Check
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - run: pnpm install
+      - run: pnpm type-check
+
+  backend-test:
+    name: Backend Tests (Vitest)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: booking_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/booking_test
+      DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:5432/booking_test
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET || 'ci-test-secret-minimum-32-characters-long' }}
+      PAYMOB_API_KEY: test
+      PAYMOB_INTEGRATION_ID: test
+      PAYMOB_IFRAME_ID: test
+      PAYMOB_HMAC_SECRET: test
+      RESEND_API_KEY: test
+      RESEND_FROM_EMAIL: test@example.com
+      CRON_SECRET: ci-test-cron-secret-minimum-32-characters
+      ADMIN_EMAIL: admin@example.com
+      ADMIN_INITIAL_PASSWORD: testpassword123
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+          cache-dependency-path: backend/pnpm-lock.yaml
+      - run: pnpm install
+      - run: pnpm prisma generate
+      - run: pnpm prisma migrate deploy
+      - run: pnpm test
+
+  e2e:
+    name: E2E Tests (Playwright)
+    runs-on: ubuntu-latest
+    needs: [backend-type-check, frontend-type-check, backend-test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Start Docker Compose stack
+        run: |
+          cp frontend/.env.example frontend/.env.local
+          cp backend/.env.example backend/.env.local
+          docker compose up -d --build
+          sleep 15
+      - name: Wait for backend health
+        run: |
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:4000/health && break
+            sleep 2
+          done
+      - name: Install Playwright
+        working-directory: frontend
+        run: |
+          pnpm install
+          pnpm playwright install chromium --with-deps
+      - name: Run E2E tests
+        working-directory: frontend
+        run: pnpm playwright test
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7

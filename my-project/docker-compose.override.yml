@@ -1,0 +1,47 @@
+# Development overrides — merged automatically by `docker compose up`
+# Hot-reload works on Windows/WSL2 via WATCHPACK_POLLING + CHOKIDAR_USEPOLLING
+
+services:
+  frontend:
+    build:
+      target: deps
+    command: pnpm dev
+    env_file:
+      - ./frontend/.env.local
+    environment:
+      NODE_ENV: development
+      BACKEND_URL: http://backend:4000
+      # Enable polling so Next.js detects file changes from Windows host via WSL2
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: "300"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    ports:
+      - '3000:3000'
+
+  backend:
+    build:
+      target: deps
+    command: pnpm dev
+    env_file:
+      - ./backend/.env.local
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/booking
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - /app/dist
+    ports:
+      - '4000:4000'
+
+  db:
+    ports:
+      - '5432:5432'
+
+  nginx:
+    profiles:
+      - prod

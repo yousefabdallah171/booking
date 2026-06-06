@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  CLIENT
+}
+
+enum SlotStatus {
+  AVAILABLE
+  BOOKED
+  BLOCKED
+}
+
+enum BookingType {
+  SINGLE
+  PACKAGE
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+}
+
+enum PackageStatus {
+  ACTIVE
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+// ─────────────────────────────────────────────
+// Models
+// ─────────────────────────────────────────────
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  name           String?
+  image          String?
+  password       String?
+  role           Role      @default(CLIENT)
+  customPriceEgp Decimal?
+  bookings       Booking[]
+  packages       Package[]
+  accounts       Account[]
+  sessions       Session[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([email])
+  @@index([role])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Slot {
+  id        String     @id @default(cuid())
+  startTime DateTime
+  endTime   DateTime
+  status    SlotStatus @default(AVAILABLE)
+  booking   Booking?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([startTime])
+  @@index([startTime])
+  @@index([status])
+}
+
+model Booking {
+  id                 String        @id @default(cuid())
+  userId             String
+  slotId             String        @unique
+  packageId          String?
+  type               BookingType
+  status             BookingStatus @default(PENDING)
+  meetLink           String?
+  reminderSent       Boolean       @default(false)
+  amountEgp          Decimal?
+  exchangeRateEgpUsd Decimal?
+  paymentRecord      PaymentRecord?
+  user               User          @relation(fields: [userId], references: [id])
+  slot               Slot          @relation(fields: [slotId], references: [id])
+  package            Package?      @relation(fields: [packageId], references: [id])
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([slotId])
+}
+
+model Package {
+  id                 String        @id @default(cuid())
+  userId             String
+  tierId             String
+  status             PackageStatus @default(ACTIVE)
+  totalSessions      Int
+  sessionsUsed       Int           @default(0)
+  amountPaidEgp      Decimal
+  exchangeRateEgpUsd Decimal?
+  intakeForm         IntakeForm?
+  bookings           Booking[]
+  paymentRecord      PaymentRecord?
+  user               User          @relation(fields: [userId], references: [id])
+  tier               PackageTier   @relation(fields: [tierId], references: [id])
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model IntakeForm {
+  id                String   @id @default(cuid())
+  packageId         String   @unique
+  skillLevel        String
+  primaryGoal       String   @db.Text
+  expectedOutcomes  String   @db.Text
+  preferredTimeline String
+  package           Package  @relation(fields: [packageId], references: [id])
+  createdAt         DateTime @default(now())
+}
+
+model PackageTier {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  sessions  Int
+  priceEgp  Decimal
+  isActive  Boolean   @default(true)
+  packages  Package[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model PaymentRecord {
+  id                  String        @id @default(cuid())
+  paymobOrderId       String        @unique
+  paymobTransactionId String?       @unique
+  bookingId           String?       @unique
+  packageId           String?       @unique
+  amountEgp           Decimal
+  status              PaymentStatus @default(PENDING)
+  rawWebhook          Json?
+  booking             Booking?      @relation(fields: [bookingId], references: [id])
+  package             Package?      @relation(fields: [packageId], references: [id])
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([paymobOrderId])
+}
+
+model BlockedDay {
+  id        String   @id @default(cuid())
+  date      DateTime @unique
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([date])
+}
+
+model SystemConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

@@ -1,0 +1,16 @@
+# Consultation Booking Platform — VPS Crontab
+#
+# Install on VPS:
+#   export CRON_SECRET="your-cron-secret"
+#   crontab backend/cron/crontab.example
+#
+# Or add manually with: crontab -e
+#
+# Prerequisite: CRON_SECRET must be available in the cron environment.
+# Recommend using a wrapper script that sources /opt/booking/backend/.env.local
+
+# Release pending bookings older than 5 minutes (runs every 5 min)
+*/5 * * * * curl -s -H "Authorization: Bearer $CRON_SECRET" http://localhost:4000/api/cron/release-pending >> /var/log/booking-cron.log 2>&1
+
+# Send 30-minute session reminders (runs every 1 min)
+* * * * * curl -s -H "Authorization: Bearer $CRON_SECRET" http://localhost:4000/api/cron/send-reminders >> /var/log/booking-cron.log 2>&1

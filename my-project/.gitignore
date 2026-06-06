@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment files (never commit secrets)
+.env*.local
+**/.env*.local
+
+# Next.js build output
+frontend/.next/
+frontend/out/
+
+# TypeScript build output
+backend/dist/
+
+# Playwright
+frontend/playwright/.auth/
+frontend/playwright-report/
+frontend/test-results/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Docker
+.dockerignore
